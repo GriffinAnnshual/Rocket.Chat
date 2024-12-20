@@ -8,6 +8,7 @@ import React, { useCallback, useMemo } from 'react';
 
 import GenericModal from '../../../../../components/GenericModal';
 import { useEndpointAction } from '../../../../../hooks/useEndpointAction';
+import { queryClient } from '../../../../../lib/queryClient';
 import { roomCoordinator } from '../../../../../lib/rooms/roomCoordinator';
 import { getRoomDirectives } from '../../../lib/getRoomDirectives';
 import { useUserHasRoomRole } from '../../useUserHasRoomRole';
@@ -63,15 +64,18 @@ export const useChangeModeratorAction = (user: Pick<IUser, '_id' | 'username'>, 
 		successMessage: t(changeModeratorMessage, { username: user.username, room_name: roomName }),
 	});
 
-	const handleConfirm = useCallback(() => {
-		changeModerator({ roomId: rid, userId: uid });
+	const handleConfirm = useCallback(async () => {
+		await changeModerator({ roomId: rid, userId: uid });
+		queryClient.invalidateQueries({ queryKey: ['members'] });
 		closeModal();
 	}, [changeModerator, rid, uid, closeModal]);
 
 	const handleChangeModerator = useCallback(
-		({ userId }) => {
+		async ({ userId }) => {
 			if (!isRoomFederated(room)) {
-				return changeModerator({ roomId: rid, userId: uid });
+				await changeModerator({ roomId: rid, userId: uid });
+				queryClient.invalidateQueries({ queryKey: ['members'] });
+				return;
 			}
 
 			const changingOwnRole = userId === loggedUserId;

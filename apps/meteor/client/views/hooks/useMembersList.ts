@@ -11,15 +11,15 @@ type MembersListOptions = {
 
 const endpointsByRoomType = {
 	d: '/v1/im.members',
-	p: '/v1/groups.members',
-	c: '/v1/channels.members',
+	p: '/v1/rooms.membersOrderedByRole',
+	c: '/v1/rooms.membersOrderedByRole',
 } as const;
 
 export const useMembersList = (options: MembersListOptions) => {
 	const getMembers = useEndpoint('GET', endpointsByRoomType[options.roomType]);
 
 	return useInfiniteQuery(
-		[options.roomType, 'members', options.rid, options.type, options.debouncedText],
+		['members', options.roomType, options.rid, options.type, options.debouncedText],
 		async ({ pageParam }) => {
 			const start = pageParam ?? 0;
 
@@ -27,6 +27,7 @@ export const useMembersList = (options: MembersListOptions) => {
 				roomId: options.rid,
 				offset: start,
 				count: 20,
+				rolesOrder: ['owner', 'moderator'],
 				...(options.debouncedText && { filter: options.debouncedText }),
 				...(options.type !== 'all' && { status: [options.type] }),
 			});

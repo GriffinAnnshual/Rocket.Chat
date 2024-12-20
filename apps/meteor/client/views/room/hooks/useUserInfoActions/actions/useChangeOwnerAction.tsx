@@ -3,6 +3,7 @@ import { isRoomFederated } from '@rocket.chat/core-typings';
 import { useMutableCallback } from '@rocket.chat/fuselage-hooks';
 import { escapeHTML } from '@rocket.chat/string-helpers';
 import { useTranslation, usePermission, useUserRoom, useUserSubscription, useSetModal, useUser } from '@rocket.chat/ui-contexts';
+import { useQueryClient } from '@tanstack/react-query';
 import type { ReactElement } from 'react';
 import React, { useCallback, useMemo } from 'react';
 
@@ -43,6 +44,7 @@ export const useChangeOwnerAction = (user: Pick<IUser, '_id' | 'username'>, rid:
 	const { _id: loggedUserId = '' } = useUser() || {};
 	const loggedUserIsOwner = useUserHasRoomRole(loggedUserId, rid, 'owner');
 	const closeModal = useCallback(() => setModal(null), [setModal]);
+	const queryClient = useQueryClient();
 
 	if (!room) {
 		throw Error('Room not provided');
@@ -58,15 +60,18 @@ export const useChangeOwnerAction = (user: Pick<IUser, '_id' | 'username'>, rid:
 		successMessage: t(changeOwnerMessage, { username: user.username, room_name: roomName }),
 	});
 
-	const handleConfirm = useCallback(() => {
-		changeOwner({ roomId: rid, userId: uid });
+	const handleConfirm = useCallback(async () => {
+		await changeOwner({ roomId: rid, userId: uid });
+		queryClient.invalidateQueries({ queryKey: ['members'] });
 		closeModal();
-	}, [changeOwner, rid, uid, closeModal]);
+	}, [changeOwner, rid, uid, queryClient, closeModal]);
 
 	const handleChangeOwner = useCallback(
-		({ userId }) => {
+		async ({ userId }) => {
 			if (!isRoomFederated(room)) {
-				return changeOwner({ roomId: rid, userId: uid });
+				await changeOwner({ roomId: rid, userId: uid });
+				queryClient.invalidateQueries({ queryKey: ['members'] });
+				return;
 			}
 			const changingOwnRole = userId === loggedUserId;
 
@@ -96,7 +101,7 @@ export const useChangeOwnerAction = (user: Pick<IUser, '_id' | 'username'>, rid:
 
 			changeOwner({ roomId: rid, userId: uid });
 		},
-		[setModal, loggedUserId, loggedUserIsOwner, t, rid, uid, changeOwner, closeModal, handleConfirm, room],
+		[room, loggedUserId, loggedUserIsOwner, changeOwner, rid, uid, queryClient, setModal, closeModal, handleConfirm, t],
 	);
 
 	const changeOwnerAction = useMutableCallback(async () => handleChangeOwner({ roomId: rid, userId: uid }));

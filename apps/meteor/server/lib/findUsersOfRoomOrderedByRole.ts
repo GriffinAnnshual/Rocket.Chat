@@ -152,7 +152,7 @@ export async function findUsersOfRoomOrderedByRole({
 
 	const totalResult = Subscriptions.col.aggregate([{ $match: { rid } }, ...filteredPipeline, { $count: 'total' }], { allowDiskUse: true });
 
-	const [members, [{ totalCount }]] = await Promise.all([membersResult.toArray(), totalResult.toArray()]);
+	const [members, [{ total: totalCount }]] = await Promise.all([membersResult.toArray(), totalResult.toArray()]);
 
 	return {
 		members: members.map((member: any) => {
